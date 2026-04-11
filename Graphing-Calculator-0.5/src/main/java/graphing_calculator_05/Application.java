@@ -1,0 +1,15 @@
+package graphing_calculator_05;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Application.class, args);
+		MathManager.run("(2+5)");
+	}
+
+}
+  

@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Function Grapher — Raw Plot Every Point</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+  :root{
+    --bg: #121212;
+    --panel: #1e1e1e;
+    --accent: #2979ff;
+    --muted: #888;
+    color-scheme: dark;
+  }
+
+  html,body{
+    height:100%;
+    margin:0;
+    background:var(--bg);
+    color:#fff;
+    font-family: Inter, Arial, sans-serif;
+  }
+
+  .app {
+  width: calc(100vw - 40px);     /* nearly full screen */
+  margin: 18px 20px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+  /* Generic panel style */
+  .panel {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 300px;
+    background: transparent;
+  }
+  .panel h1 {
+    margin: 0;
+    text-align: center;
+    font-weight: 600;
+    font-size: 20px;
+  }
+  .panel .panel-body {
+    background: rgba(255,255,255,0.02);
+    border-radius: 8px;
+    padding: 12px;
+    min-height: 420px;
+  }
+
+  .graph-frame {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: transparent;
+    border-radius: 8px;
+    padding: 6px 2px;
+    min-height: 520px;
+    height: 880px;
+  }
+
+  #graphCanvas {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    border-radius: 8px;
+    border: 1px solid #333;
+    display: block;
+    touch-action: none;
+  }
+
+  #controls{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:center;
+  }
+
+  input[type="text"],
+  input[type="number"]{
+    background: var(--panel);
+    border: 1px solid #333;
+    color: #fff;
+    padding: 8px;
+    border-radius: 6px;
+    min-width: 40px;
+    text-align:center;
+  }
+  #expression{
+    min-width:220px;
+    width:220px;
+  }
+  button.control {
+    background: var(--accent);
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor:pointer;
+    font-weight:600;
+  }
+  button.control:active { transform: translateY(1px); }
+
+  .small { font-size:12px; color:var(--muted); }
+
+  /* Sidebar */
+  #OptionBar {
+    width: 280px;
+    flex: 0 0 280px;
+    background: var(--panel);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    max-height: calc(100vh - 48px);
+  }
+
+  #OptionBar .title {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: .6px;
+  }
+
+  .options-scroll {
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .option-btn {
+    display: block;
+    width: 100%;
+    padding: 14px 12px;
+    text-align: left;
+    font-size: 15px;
+    border-radius: 0;
+    border: 1px solid rgba(255,255,255,0.03);
+    background: #000;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 700;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.45);
+    transition: background .12s ease, color .12s ease, transform .06s ease, box-shadow .12s ease;
+  }
+  .option-btn:hover {
+    background: linear-gradient(180deg, #000 0%, #ddd 100%);
+    color: #111;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  }
+  .option-note { font-size:12px; color:var(--muted); padding: 0 12px 12px 12px; }
+
+  @media (max-width: 900px) {
+    .app { flex-direction: column; padding: 12px; }
+    #OptionBar { width: 100%; flex: none; order: 2; max-height: none; }
+    .graph-frame { height: 420px; min-height: 320px; }
+    .options-scroll { flex-direction: row; gap:8px; padding:10px; overflow-x: auto; }
+    .option-btn { min-width: 180px; flex: 0 0 auto; white-space: nowrap; border-radius: 6px; }
+  }
+
+  .hidden { display:none !important; }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Description (default visible) -->
+    <section id="DescriptionWindow" class="panel" aria-label="Description">
+      <h1>Project Overview</h1>
+      <div class="panel-body">
+        <p>Short description placeholder. Click modules on the right to open them.</p>
+      </div>
+    </section>
+
+    <!-- Function Grapher (hidden by default) -->
+    <section id="FunctionGrapherWindow" class="panel" aria-label="Function grapher" hidden>
+      <h1>Function Grapher</h1>
+
+      <div class="graph-frame">
+        <canvas id="graphCanvas" aria-label="Function grapher canvas"></canvas>
+
+        <div id="controls" aria-label="Graph controls">
+          <input id="expression" type="text" placeholder="Enter expression (e.g. 2*x+3 or sin(x))" />
+          <input id="minX" type="number" step="any" value="-10" title="min X" />
+          <input id="maxX" type="number" step="any" value="10" title="max X" />
+          <input id="step" type="number" step="any" value="0.1" title="sample step (optional)" />
+          <button id="graphBtn" class="control">Graph</button>
+          <div class="small">Use mouse wheel to zoom, drag to pan. Server: <code>http://localhost:8080/api/table</code></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Algebra Engine placeholder -->
+    <section id="AlgebraEngineWindow" class="panel" aria-label="Algebra engine" hidden>
+      <h1>Algebra Engine</h1>
+      <div class="panel-body">
+        <p>Algebra Engine placeholder — equation input and result area.</p>
+      </div>
+    </section>
+
+    <!-- Library placeholder -->
+    <section id="LibraryWindow" class="panel" aria-label="Math library" hidden>
+      <h1>Math Library</h1>
+      <div class="panel-body">
+        <p>Library placeholder: functions, constants, docs.</p>
+      </div>
+    </section>
+
+    <!-- Matrix Algebra placeholder -->
+    <section id="MatrixEngineWindow" class="panel" aria-label="Matrix algebra" hidden>
+      <h1>Matrix Algebra</h1>
+      <div class="panel-body">
+        <p>Matrix engine placeholder: matrix input and operations.</p>
+      </div>
+    </section>
+
+    <!-- Settings placeholder -->
+    <section id="SettingsWindow" class="panel" aria-label="Settings" hidden>
+      <h1>Settings</h1>
+      <div class="panel-body">
+        <p>Settings placeholder.</p>
+      </div>
+    </section>
+
+    <!-- Sidebar -->
+    <aside id="OptionBar" aria-label="Options panel">
+      <div class="title">Options</div>
+
+      <div class="options-scroll" role="list">
+        <button id="DescriptionSelect" class="option-btn" role="listitem">Description</button>
+        <button id="GraphingEngineSelect" class="option-btn" role="listitem">Graphing Engine</button>
+        <button id="AlgebraEngineSelect" class="option-btn" role="listitem">Algebra Engine</button>
+        <button id="LibrarySelect" class="option-btn" role="listitem">Math Library</button>
+        <button id="MatrixEngineSelect" class="option-btn" role="listitem">Matrix Algebra</button>
+        <button id="SettingsSelect" class="option-btn" role="listitem">Settings</button>
+      </div>
+
+      <div class="option-note">Tip: click an option to load content. Graphing plots every sample you request.</div>
+    </aside>
+
+  </div>
+
+<script>
+(function () {
+  const DEBUG = false;
+
+  const PANELS = [
+    "DescriptionWindow",
+    "FunctionGrapherWindow",
+    "AlgebraEngineWindow",
+    "LibraryWindow",
+    "MatrixEngineWindow",
+    "SettingsWindow"
+  ];
+
+  // --- Panel toggle ---
+  function showSection(id) {
+    PANELS.forEach(pid => {
+      const el = document.getElementById(pid);
+      if (!el) return;
+      const show = (pid === id);
+      if (!show && pid === "FunctionGrapherWindow") {
+        try { clearBackingStore(); } catch (e) { if (DEBUG) console.warn(e); }
+      }
+      el.hidden = !show;
+      if (show) el.classList.remove("hidden"); else el.classList.add("hidden");
+      el.setAttribute("aria-hidden", (!show).toString());
+    });
+
+    if (id === "FunctionGrapherWindow") {
+      requestAnimationFrame(() => {
+        try { setCanvasSize(); drawFrame(); }
+        catch (e) { if (DEBUG) console.warn("graph init error:", e); }
+      });
+    }
+  }
+
+  // Wire sidebar
+  document.getElementById("DescriptionSelect").addEventListener("click", () => showSection("DescriptionWindow"));
+  document.getElementById("GraphingEngineSelect").addEventListener("click", () => showSection("FunctionGrapherWindow"));
+  document.getElementById("AlgebraEngineSelect").addEventListener("click", () => showSection("AlgebraEngineWindow"));
+  document.getElementById("LibrarySelect").addEventListener("click", () => showSection("LibraryWindow"));
+  document.getElementById("MatrixEngineSelect").addEventListener("click", () => showSection("MatrixEngineWindow"));
+  document.getElementById("SettingsSelect").addEventListener("click", () => showSection("SettingsWindow"));
+
+  // --- Graphing code ---
+  const canvas = document.getElementById("graphCanvas");
+  const exprEl = document.getElementById("expression");
+  const minEl  = document.getElementById("minX");
+  const maxEl  = document.getElementById("maxX");
+  const stepEl = document.getElementById("step");
+  const graphBtn = document.getElementById("graphBtn");
+  const ctx = canvas.getContext("2d");
+
+  // State
+  let offsetX = 0;
+  let offsetY = 0;
+  let scaleX = 250;
+  let scaleY = 250;
+  let dragging = false;
+  let dragStart = null;
+  const zoomFactor = 1.2;
+  let points = [];
+  let currentExpression = "";
+  let abortController = null;
+
+  // User-request safety cap (warn when exceeded)
+  const MAX_POINTS = 20000;
+
+  // Clear entire backing store (device pixels) and restore DPR transform
+  function clearBackingStore() {
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  // Ensure backing store matches CSS size (device pixel aware)
+  function setCanvasSize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const cssW = Math.max(100, Math.round(rect.width));
+    const cssH = Math.max(120, Math.round(rect.height));
+    const bitmapW = Math.round(cssW * dpr);
+    const bitmapH = Math.round(cssH * dpr);
+
+    if (canvas.width === bitmapW && canvas.height === bitmapH) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return;
+    }
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    canvas.width = bitmapW;
+    canvas.height = bitmapH;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Coordinate transforms
+  function toPixelX(x) { return (x - offsetX) * scaleX + canvas.clientWidth / 2; }
+  function toPixelY(y) { return canvas.clientHeight / 2 - (y - offsetY) * scaleY; }
+  function fromPixelX(px) { return (px - canvas.clientWidth / 2) / scaleX + offsetX; }
+  function fromPixelY(py) { return (canvas.clientHeight / 2 - py) / scaleY + offsetY; }
+
+  // Tick helpers
+  function niceTickStep(range) {
+    const target = Math.max(range / 8, Number.EPSILON);
+    const pow = Math.pow(10, Math.floor(Math.log10(target)));
+    const frac = target / pow;
+    let niceFrac;
+    if (frac <= 1) niceFrac = 1;
+    else if (frac <= 2) niceFrac = 2;
+    else if (frac <= 5) niceFrac = 5;
+    else niceFrac = 10;
+    return niceFrac * pow;
+  }
+  function formatNumberForStep(val, step) {
+    if (!isFinite(val)) return "";
+    const absStep = Math.abs(step) || 1;
+    const decimals = Math.min(12, Math.max(0, -Math.floor(Math.log10(absStep))));
+    return Number(val.toFixed(decimals)).toString();
+  }
+
+  // Draw grid & axes (pure drawing, no layout changes)
+  function drawGridAndAxes() {
+    clearBackingStore();
+
+    const bounds = getViewportBounds();
+    const width = canvas.clientWidth, height = canvas.clientHeight;
+
+    ctx.lineWidth = 1;
+    ctx.font = "12px sans-serif";
+    ctx.fillStyle = "#fff";
+
+    const xRange = bounds.maxX - bounds.minX;
+    const yRange = bounds.maxY - bounds.minY;
+    const xStep = niceTickStep(xRange);
+    const yStep = niceTickStep(yRange);
+
+    const xStart = Math.ceil(bounds.minX / xStep) * xStep;
+    const yStart = Math.ceil(bounds.minY / yStep) * yStep;
+
+    const MIN_PIXEL_LABEL_SPACING = 40;
+
+    // Vertical grid + X labels
+    ctx.strokeStyle = "#444";
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    const zeroY = toPixelY(0);
+    const labelY = (zeroY >= 0 && zeroY <= height) ? zeroY + 6 : (height - 18);
+
+    let lastLabelPx = -Infinity;
+    for (let x = xStart; x <= bounds.maxX + 1e-12; x += xStep) {
+      const px = toPixelX(x);
+      ctx.beginPath();
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, height);
+      ctx.stroke();
+
+      if (px - lastLabelPx >= MIN_PIXEL_LABEL_SPACING) {
+        const txt = formatNumberForStep(x, xStep);
+        ctx.fillText(txt, px, labelY);
+        lastLabelPx = px;
+      }
+    }
+
+    // Horizontal grid + Y labels
+    ctx.strokeStyle = "#444";
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    const zeroX = toPixelX(0);
+    const labelX = (zeroX >= 0 && zeroX <= width) ? zeroX - 6 : 36;
+
+    let lastLabelPy = -Infinity;
+    for (let y = yStart; y <= bounds.maxY + 1e-12; y += yStep) {
+      const py = toPixelY(y);
+      ctx.beginPath();
+      ctx.moveTo(0, py);
+      ctx.lineTo(width, py);
+      ctx.stroke();
+
+      if (Math.abs(py - lastLabelPy) >= MIN_PIXEL_LABEL_SPACING) {
+        const txt = formatNumberForStep(y, yStep);
+        ctx.fillText(txt, labelX, py);
+        lastLabelPy = py;
+      }
+    }
+
+    // Axes
+    ctx.strokeStyle = "#888";
+    ctx.lineWidth = 2;
+    if (zeroY >= 0 && zeroY <= height) {
+      ctx.beginPath();
+      ctx.moveTo(0, zeroY);
+      ctx.lineTo(width, zeroY);
+      ctx.stroke();
+    }
+    if (zeroX >= 0 && zeroX <= width) {
+      ctx.beginPath();
+      ctx.moveTo(zeroX, 0);
+      ctx.lineTo(zeroX, height);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 1;
+  }
+
+  function getViewportBounds() {
+    const minX = fromPixelX(0);
+    const maxX = fromPixelX(canvas.clientWidth);
+    const minY = fromPixelY(canvas.clientHeight);
+    const maxY = fromPixelY(0);
+    return { minX, maxX, minY, maxY };
+  }
+
+  // === RAW plotting: draw every finite point and draw connecting lines ===
+  function drawFunctionFromPoints(pointsArray) {
+    if (!pointsArray || pointsArray.length === 0) return;
+
+    ctx.strokeStyle = "#00ffcc";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+
+    const dpr = window.devicePixelRatio || 1;
+    const markerPx = Math.max(1, 1 * dpr);
+
+    let prevFinite = false;
+
+    for (let i = 0; i < pointsArray.length; i++) {
+      const p = pointsArray[i];
+      if (!p || p.length < 2) { prevFinite = false; continue; }
+      const x = Number(p[0]), y = Number(p[1]);
+
+      if (!isFinite(x) || !isFinite(y)) { prevFinite = false; continue; }
+
+      const px = toPixelX(x);
+      const py = toPixelY(y);
+
+      if (!isFinite(px) || !isFinite(py)) { prevFinite = false; continue; }
+
+      if (prevFinite) {
+        ctx.lineTo(px, py);
+      } else {
+        ctx.moveTo(px, py);
+      }
+
+      ctx.fillStyle = "#00ffcc";
+      ctx.fillRect(Math.round(px - markerPx/2), Math.round(py - markerPx/2), markerPx, markerPx);
+
+      prevFinite = true;
+    }
+
+    ctx.stroke();
+    ctx.lineWidth = 1;
+  }
+
+  // fetch table from backend
+  async function fetchTable(expression, minX, maxX, step, signal) {
+    if (!expression || !isFinite(minX) || !isFinite(maxX) || !isFinite(step) || step === 0) {
+      if (DEBUG) console.warn("fetchTable invalid args", { expression, minX, maxX, step });
+      return [];
+    }
+
+    const approxPoints = Math.ceil((maxX - minX) / Math.abs(step)) + 1;
+
+    if (approxPoints > MAX_POINTS) {
+      // Should not happen due to clamp in graph(), but double-check
+      if (!confirm(`Request would produce ${approxPoints.toLocaleString()} points. Continue?`)) return [];
+    }
+
+    const url = `http://localhost:8080/api/table?expression=${encodeURIComponent(expression)}&minX=${minX}&maxX=${maxX}&step=${step}`;
+    if (DEBUG) console.log("fetchTable url:", url);
+
+    try {
+      const res = await fetch(url, { signal });
+      if (!res.ok) {
+        if (DEBUG) console.error("fetchTable HTTP error", res.status);
+        return [];
+      }
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        if (DEBUG) console.warn("fetchTable returned non-array", data);
+        return [];
+      }
+      return data.map(d => [Number(d[0]), Number(d[1])]);
+    } catch (err) {
+      if (DEBUG) console.error("fetchTable error", err);
+      return [];
+    }
+  }
+
+  // main graphing function — uses user's explicit step when provided
+  async function graph() {
+    const exprVal = exprEl.value && exprEl.value.trim();
+    if (exprVal) currentExpression = exprVal;
+
+    if (!currentExpression) { drawFrame(); return; }
+
+    let minX, maxX;
+    // If user supplied explicit min/max use them, otherwise use viewport
+    const parsedMin = parseFloat(minEl.value);
+    const parsedMax = parseFloat(maxEl.value);
+    const bounds = getViewportBounds();
+    minX = isFinite(parsedMin) ? parsedMin : bounds.minX;
+    maxX = isFinite(parsedMax) ? parsedMax : bounds.maxX;
+
+    if (!isFinite(minX) || !isFinite(maxX) || maxX <= minX) {
+      alert("Invalid X range. Check min and max values.");
+      return;
+    }
+
+    // compute step
+    let step = (maxX - minX) / Math.max(canvas.clientWidth, 200);
+    const parsedStep = parseFloat(stepEl.value);
+    if (isFinite(parsedStep) && parsedStep !== 0) step = Math.abs(parsedStep);
+
+    // Safety clamp: never request more than MAX_POINTS samples
+    const minAllowedStep = (maxX - minX) / (MAX_POINTS - 1);
+    if (step < minAllowedStep) {
+      console.warn(`Requested step (${step}) is too small for range [${minX},${maxX}]. Clamping to ${minAllowedStep}.`);
+      step = minAllowedStep;
+    }
+
+    if (abortController) abortController.abort();
+    abortController = new AbortController();
+
+    // fetch exactly what we will plot
+    points = await fetchTable(currentExpression, minX, maxX, step, abortController.signal);
+    drawFrame();
+  }
+
+  // draw frame: grid + raw points
+  function drawFrame() {
+    drawGridAndAxes();
+    drawFunctionFromPoints(points);
+  }
+
+  // Interaction handlers (pan & zoom now do not trigger network requests)
+  function onWheel(e) {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const worldX = fromPixelX(mouseX), worldY = fromPixelY(mouseY);
+    const factor = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
+    scaleX *= factor; scaleY *= factor;
+    offsetX = worldX - (mouseX - canvas.clientWidth / 2) / scaleX;
+    offsetY = worldY - (canvas.clientHeight / 2 - mouseY) / scaleY;
+    // do not call graph() here — only redraw locally
+    drawFrame();
+  }
+  function onMouseDown(e) { dragging = true; dragStart = { x: e.clientX, y: e.clientY }; }
+  function onMouseUp() { dragging = false; /* do not re-fetch; just redraw */ drawFrame(); }
+  function onMouseMove(e) {
+    if (!dragging) return;
+    const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
+    offsetX -= dx / scaleX;
+    offsetY += dy / scaleY;
+    dragStart = { x: e.clientX, y: e.clientY };
+    // live pan locally (no backend request)
+    drawFrame();
+  }
+
+  // Initialize graph module and observers
+  function initGraph() {
+    setCanvasSize();
+    const parent = canvas.parentElement || document.body;
+    const ro = new ResizeObserver(entries => {
+      requestAnimationFrame(() => {
+        setCanvasSize();
+        drawFrame();
+      });
+    });
+    ro.observe(parent);
+
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    canvas.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mouseup", onMouseUp);
+    canvas.addEventListener("mousemove", onMouseMove);
+
+    // graph is only triggered by the button click now
+    graphBtn.addEventListener("click", (e) => { e.preventDefault(); graph(); });
+
+    window.graph = graph;
+    drawFrame();
+
+    if (DEBUG) {
+      fetch("http://localhost:8080/api/test").then(r => r.json()).then(j => console.log("/api/test:", j)).catch(() => {});
+    }
+    window.addEventListener("resize", () => { setCanvasSize(); drawFrame(); });
+  }
+
+  // Start up
+  document.addEventListener("DOMContentLoaded", () => {
+    initGraph();
+    showSection("DescriptionWindow");
+  });
+
+})();
+</script>
+</body>
+</html>
