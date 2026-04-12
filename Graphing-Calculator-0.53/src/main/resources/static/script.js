@@ -349,8 +349,8 @@ function fromPixelY(py) {
     }
 
 
-   const url =
-  `/api/table?expression=${encodeURIComponent(expression)}` +
+const url =
+  `https://parityengine.onrender.com/api/table?expression=${encodeURIComponent(expression)}` +
   `&minX=${minX}&maxX=${maxX}&step=${step}`;
 
     try {
