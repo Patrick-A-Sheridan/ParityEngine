@@ -1,4 +1,4 @@
-#ParityEngine
+# ParityEngine
 
   ParityEngine v0.53 is a full-stack symbolic math and graphing system built from scratch as an experiment in how far I can push mathematical computation without relying on external libraries or built-in evaluators. The goal is to handle everything end-to-end: parsing, simplifying, evaluating, and visualizing expressions using only custom systems, minimizing overhead and maximizing efficiency. There have been several major iterations so far. I started with a basic string manipulator, then, with quite a bit of research (thank you, Wikipedia) and headache, I got a functional pipeline. Although it is fully functional within its current scope, this project is heavily a work in progress, and I've spent a decent amount of my free time working on it, and I intend to continue to do so, I want to see how far I can push this. 
 
