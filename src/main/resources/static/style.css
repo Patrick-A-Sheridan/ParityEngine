@@ -1,0 +1,196 @@
+/* =========================
+   CORE THEME VARIABLES
+========================= */
+:root {
+    --bg: #0f0f12;
+    --panel: #1a1c22;
+    --border: #2a2d36;
+    --accent: #00e5ff;
+    --text: #e6e6e6;
+}
+
+/* =========================
+   GLOBAL LAYOUT FIX
+========================= */
+body {
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+}
+
+/* =========================
+   SIDEBAR
+========================= */
+.sidebar {
+    width: 220px;
+    background: #12141a;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.brand {
+    font-size: 1.2rem;
+    color: var(--accent);
+    margin-bottom: 20px;
+}
+
+.nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nav-item {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.nav-item.active {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* =========================
+   MAIN WORKSPACE
+========================= */
+.workspace {
+    flex: 1;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Panels */
+.panel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ONLY HOME SCROLLS */
+.scroll-content {
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Hide inactive panels */
+.hidden {
+    display: none;
+}
+
+/* =========================
+   GRAPH FIX
+========================= */
+.canvas-wrapper {
+    flex-grow: 1;
+    background: #000;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.canvas-wrapper canvas {
+    width: calc(100% - 20px);
+    height: calc(100% - 40px);
+    margin: 10px;
+    display: block;
+}
+
+/* =========================
+   CONSOLE (minimal restore)
+========================= */
+.console-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.console-output {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    background: #0c0d10;
+}
+
+.console-input-row {
+    display: flex;
+    border-top: 1px solid var(--border);
+    padding: 8px;
+}
+
+.console-input-row input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    outline: none;
+}
+/* =========================
+   GRAPHER TOOLBAR 
+========================= */
+
+#FunctionGrapherWindow .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+     background-color: #000000(10, 117, 170)
+}
+
+#FunctionGrapherWindow .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+     background-color: #000000;
+}
+
+#FunctionGrapherWindow .input-group input {
+    width: 100%;
+    background-color:#000000;
+    box-sizing: border-box;
+    padding: 6px;
+}
+#expression {
+    color: var(--accent, #00e5ff);
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
+#minX, #maxX, #step {
+    color: var(--accent, #00e5ff);
+    text-align: center; 
+    font-weight: bold;
+    width: 60px; 
+}
+#FunctionGrapherWindow .input-group.small {
+    width: 80px;
+        background-color: #000000;
+}
+
+#FunctionGrapherWindow .input-group.main-input {
+    flex: 1;
+    min-width: 160px;
+    background-color: #000;
+    text-emphasis-color: var(--accent);
+}
+
+#FunctionGrapherWindow .action-btn {
+    align-self: flex-end;
+    padding: 7px 12px;
+            background-color: silver;
+}
