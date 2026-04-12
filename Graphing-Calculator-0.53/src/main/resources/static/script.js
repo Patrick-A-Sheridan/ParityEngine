@@ -1,6 +1,17 @@
 (function () {
   const DEBUG = false;
+  
+const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes in milliseconds
+const BACKEND_URL = "https://onrender.com"; // Create a simple /ping endpoint in Spring Boot
 
+function keepAlive() {
+    fetch(BACKEND_URL)
+        .then(() => console.log("Backend pinged to stay awake."))
+        .catch(err => console.error("Ping failed:", err));
+}
+
+// Start the ping cycle
+setInterval(keepAlive, PING_INTERVAL);
   const PANELS = [
     "DescriptionWindow",
     "FunctionGrapherWindow",
