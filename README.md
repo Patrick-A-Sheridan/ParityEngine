@@ -14,7 +14,7 @@ The backend is organized around a dispatcher that routes requests into either sy
 
 From a user perspective, the system has two main entry points. The console takes raw expressions and returns simplified symbolic results, while the graphing interface takes functions of x plus a domain definition (min, max, step) and renders them in real time. Both share the same underlying AST pipeline, so symbolic and visual outputs always stay consistent.
 
-Overall, MathEngine is less of a traditional calculator and more of an experimental computation framework. It’s an attempt to build a complete symbolic math system from first principles, tightly integrating parsing, simplification, evaluation, and rendering into a single coherent pipeline.
+Overall, MathEngine is less of a traditional calculator and more of an experimental computation framework. It’s an attempt to build a complete symbolic math system from first principles, tightly integrating parsing, simplification, evaluation, and rendering into a single coherent pipeline. If you wish to see older versions/my history of development, go to "LegacyBranch"; if you wish to see the full-stack integration, go to the "Full" branch 
 
 Roadmap / Future Development
 
