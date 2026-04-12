@@ -20,16 +20,6 @@ setInterval(keepAlive, PING_INTERVAL);
     "MatrixEngineWindow",
     "SettingsWindow"
   ];
-  const DEBUG = false;
-
-  const PANELS = [
-    "DescriptionWindow",
-    "FunctionGrapherWindow",
-    "AlgebraEngineWindow",
-    "LibraryWindow",
-    "MatrixEngineWindow",
-    "SettingsWindow"
-  ];
 
   const NAV_MAP = {
     "DescriptionSelect": "DescriptionWindow",
