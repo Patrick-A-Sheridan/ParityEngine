@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParityEngine v0.53</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dark-theme">
+
+<!-- Sidebar Navigation -->
+<nav class="sidebar">
+    <div class="brand">ParityEngine <span>0.53</span></div>
+    <div class="nav-group">
+        <button id="DescriptionSelect" class="nav-item active">Home / Readme</button>
+        <button id="GraphingEngineSelect" class="nav-item">Grapher</button>
+        <button id="AlgebraEngineSelect" class="nav-item">Console</button>
+        <button id="LibrarySelect" class="nav-item">Methodology</button>
+        <button id="SettingsSelect" class="nav-item">Settings</button>
+    </div>
+</nav>
+
+<!-- Main Content Area -->
+<main class="workspace">
+
+    <!-- 1. Description / Home (SCROLLABLE) -->
+    <section id="DescriptionWindow" class="panel">
+        <div class="scroll-content">
+            <article class="readme-container" style="max-width: 850px; margin: 0 auto; line-height: 1.6; padding: 20px;">
+
+                <header style="border-bottom: 2px solid var(--accent); padding-bottom: 10px; margin-bottom: 30px;">
+                    <h1 style="color: var(--accent); margin: 0; font-size: 2.5rem;">
+                        ParityEngine <span style="color: #666; font-size: 1.2rem;">v0.53</span>
+                    </h1>
+                    <p style="font-style: italic; color: #aaa; margin-top: 5px;">
+                        A Solo-Developed Full-Stack Symbolic Math & Graphing Engine
+                    </p>
+                </header>
+
+                <section style="margin-bottom: 30px;">
+                    <p><strong>ParityEngine</strong> is a high-performance mathematical playground built to bridge the gap between abstract algebraic manipulation and real-time visual rendering. instead of relying on libraries or preprogrammed functions like <code>eval()</code>, ParityEngine utilizes a custom-built <strong>Recursive Descent Parser</strong> and an <strong>Abstract Syntax Tree (AST)</strong> to understand and simplify expressions into executable logic trees.</p>
+                </section>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                    <div style="background: var(--panel); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+                        <h3 style="color: var(--accent); margin-top: 0;">🧠 The Symbolic Brain</h3>
+                        <ul style="padding-left: 20px; font-size: 0.9rem;">
+                            <li><strong>Context-Aware Tokenization:</strong> Differentiates unary vs. binary operators.</li>
+                            <li><strong>AST Parsing:</strong> Generates hierarchical logic trees for deep analysis.</li>
+                            <li><strong>Implicit Multiplication:</strong> Handles <code>2x(x+5)</code> syntax automatically.</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: var(--panel); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+                        <h3 style="color: var(--accent); margin-top: 0;">📉 Visual Precision</h3>
+                        <ul style="padding-left: 20px; font-size: 0.9rem;">
+                            <li><strong>Coordinate Mapping:</strong> Real-time math-to-pixel transformation.</li>
+                            <li><strong>Gap Detection:</strong> Smart handling of asymptotes (like 1/x).</li>
+                            <li><strong>Dynamic Scaling:</strong> Adaptive grid labels based on zoom levels.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2 style="border-left: 4px solid var(--accent); padding-left: 15px; font-size: 1.4rem;">Algebraic Simplification</h2>
+                <p>The engine performs multiple reduction passes to simplify expressions before evaluation:</p>
+
+                <ul style="list-style: none; padding-left: 0;">
+                    <li style="margin-bottom: 10px; background: rgba(0, 229, 255, 0.05); padding: 8px; border-radius: 4px;">
+                        <code style="color: var(--accent);">Identity:</code> <em>x * 1 → x</em> | <em>x + 0 → x</em>
+                    </li>
+                    <li style="margin-bottom: 10px; background: rgba(0, 229, 255, 0.05); padding: 8px; border-radius: 4px;">
+                        <code style="color: var(--accent);">Combining:</code> <em>x + x → 2x</em> | <em>2x + 3x → 5x</em>
+                    </li>
+                    <li style="margin-bottom: 10px; background: rgba(0, 229, 255, 0.05); padding: 8px; border-radius: 4px;">
+                        <code style="color: var(--accent);">Cancellation:</code> <em>x / (x * 5) → 0.2</em>
+                    </li>
+                </ul>
+
+                <h2 style="border-left: 4px solid var(--accent); padding-left: 15px; font-size: 1.4rem; margin-top: 40px;">
+                    Technical Stack
+                </h2>
+
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem;">
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px; font-weight: bold;">Backend</td>
+                        <td style="padding: 10px;">Java 17, Spring Boot (REST API)</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px; font-weight: bold;">Frontend</td>
+                        <td style="padding: 10px;">JavaScript (ES6+), HTML5 Canvas API</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px; font-weight: bold;">Architecture</td>
+                        <td style="padding: 10px;">Recursive Descent AST Parsing, Service-Oriented Routing</td>
+                    </tr>
+                </table>
+
+                <div style="margin-top: 30px;">
+                    <span class="tag success" style="background: #2e7d32; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; margin-right: 10px;">
+                        CORE FastSolver Active
+                    </span>
+                    <span class="tag warning" style="background: #ef6c00; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
+                        Peripheral PreciseSolver Offline, Work In Progress
+                    </span>
+                </div>
+
+                <footer style="margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--border); text-align: center; color: #666; font-size: 0.85rem;">
+                    <p>Developed by <strong>Patrick Sheridan</strong></p>
+                    <p>New Glarus High School | Madison College STEM Transfer Student</p>
+                </footer>
+
+            </article>
+        </div>
+    </section>
+
+    <!-- 2. Graphing Engine -->
+    <section id="FunctionGrapherWindow" class="panel hidden">
+        <div class="toolbar">
+            <div class="input-group main-input">
+                <label>f(x) =</label>
+                <input type="text" id="expression" placeholder="x^2 - 4" value="sin(x)">
+            </div>
+            <div class="input-group small">
+                <label>Min X</label>
+                <input type="number" id="minX" value="-10">
+            </div>
+            <div class="input-group small">
+                <label>Max X</label>
+                <input type="number" id="maxX" value="10">
+            </div>
+            <div class="input-group small">
+                <label>Step</label>
+                <input type="number" id="step" value="0.1">
+            </div>
+            <button id="graphBtn" class="action-btn">Plot Function</button>
+        </div>
+
+        <div class="canvas-wrapper">
+            <canvas id="graphCanvas"></canvas>
+        </div>
+    </section>
+
+    <!-- 3. Algebra Console -->
+    <section id="AlgebraEngineWindow" class="panel hidden">
+        <div class="console-container">
+            <div class="console-output" id="consoleOutput">
+                <div class="log-entry">ParityEngine Console initialized...</div>
+            </div>
+            <div class="console-input-row">
+                <span class="prompt">>></span>
+                <input type="text" id="consoleInput" placeholder="Type expression (e.g., simplify x+x)...">
+            </div>
+        </div>
+    </section>
+
+    <section id="LibraryWindow" class="panel hidden"><h2>Methodology Library</h2></section>
+    <section id="SettingsWindow" class="panel hidden"><h2>Settings</h2></section>
+
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>
