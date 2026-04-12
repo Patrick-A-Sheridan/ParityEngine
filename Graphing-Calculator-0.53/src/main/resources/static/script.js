@@ -1,6 +1,5 @@
 (function () {
   const DEBUG = false;
-  
 const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes in milliseconds
 const BACKEND_URL = "https://parityengine.onrender.com"; // Create a simple /ping endpoint in Spring Boot
 
