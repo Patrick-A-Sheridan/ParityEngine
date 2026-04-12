@@ -338,9 +338,8 @@ function fromPixelY(py) {
       }
     }
 
-    const url =
-      `http://localhost:8080/api/table?expression=${encodeURIComponent(expression)}` +
-      `&minX=${minX}&maxX=${maxX}&step=${step}`;
+const url = `/api/table?expression=${encodeURIComponent(expression)}` +
+`&minX=${minX}&maxX=${maxX}&step=${step}`;
 
     try {
       const res = await fetch(url, { signal });
@@ -577,7 +576,7 @@ function fromPixelY(py) {
     });
 
     if (DEBUG) {
-      fetch("http://localhost:8080/api/test")
+        fetch("/api/test")
         .then((r) => r.json())
         .then((j) => console.log("/api/test:", j))
         .catch(() => {});
