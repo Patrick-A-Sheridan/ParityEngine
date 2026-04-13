@@ -22,14 +22,14 @@ Roadmap / Future Development
 
 Planned improvements, roughly in priority order:
 
-Core trigonometric functions (sin, cos, tan, sec, csc, cot)
-Mathematical constants (π, e, φ)
-Numerical differentiation and integration
-Multi-function graphing support
-Full symbolic calculus system
-Implicit, polar, and parametric graphing modes
-High-precision BigDecimal-based evaluation integrated into the AST
-Higher-fidelity rendering modes for graphing
-Full matrix and linear algebra support in the console
-A computational methods library for structured problem-solving (from algebra through multivariable calculus and linear algebra)
-Multithreading via Java 21 virtual threads
+- Improved core trigonometric function handling (sin, cos, tan, sec, csc, cot)
+- Mathematical constants (π, e, φ)
+- Numerical differentiation and integration
+- Multi-function graphing support
+- Full symbolic calculus system
+- Implicit, polar, and parametric graphing modes
+- High-precision BigDecimal-based evaluation integrated into the AST
+- Higher-fidelity rendering modes for graphing
+- Full matrix and linear algebra support in the console
+- A computational methods library for structured problem-solving (from algebra through multivariable calculus and linear algebra)
+- Multithreading via Java 21 virtual threads
