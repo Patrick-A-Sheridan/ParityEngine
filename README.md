@@ -25,7 +25,7 @@ Roadmap / Future Development
 
 Planned improvements, roughly in priority order:
 
-- Core trigonometric functions (sin, cos, tan, sec, csc, cot)
+- Improved core trigonometric function handling (sin, cos, tan, sec, csc, cot)
 - Mathematical constants (π, e, φ)
 - Numerical differentiation and integration
 - Multi-function graphing support
