@@ -37,8 +37,8 @@ public class Dispatcher {
                 // Simplify Loop
                 while (!ast.equals(oldAst)) {
                     oldAst = ast;
-                    ast = simplifier.simplifyIdentities(ast);
                     ast = simplifier.simplify(ast);
+		            ast = simplifier.simplifyIdentities(ast);
                 }
                 
                 EquationToString eqtString = new EquationToString();
