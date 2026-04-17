@@ -65,7 +65,6 @@ public class Simplifier {
         }
 
        else if (node instanceof MultiplicationNode a) {
-            System.out.println("CHECK 68");
             if (a.right() instanceof NumberNode && a.left() instanceof NumberNode) {
                 return new FastNumberNode(evaluate(a.left()) * evaluate(a.right()));
             } else if (a.right() instanceof VariableNode v) {
