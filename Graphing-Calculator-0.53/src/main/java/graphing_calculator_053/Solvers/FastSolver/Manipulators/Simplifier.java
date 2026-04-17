@@ -64,13 +64,13 @@ public class Simplifier {
             return new EquivalenceNode(simplify(e.left()), simplify(e.right()));
         }
 
-        else if (node instanceof MultiplicationNode a) {
+ else if (node instanceof MultiplicationNode a) {
             if (a.right() instanceof NumberNode && a.left() instanceof NumberNode) {
                 return new FastNumberNode(evaluate(a.left()) * evaluate(a.right()));
             } else if (a.right() instanceof VariableNode v) {
                 return new TermNode(new MultiplicationNode(simplifyIdentities(simplify(a.left())), v));
-            } else if (a.left() instanceof VariableNode v) {
-                return new TermNode(new MultiplicationNode(simplifyIdentities(simplify(a.right())), v));
+            } else if (a.left() instanceof VariableNode v && a.right() instanceof NumberNode n) {
+                return new TermNode(new MultiplicationNode(simplifyIdentities(simplify(n)), v));
             } else if (a.left() instanceof VariableNode v_1 && a.right() instanceof VariableNode v_2) {
                 return new MultiplicationNode(v_1, v_2);
             } else
@@ -160,7 +160,7 @@ else if (node instanceof ReciprocalTrigNode a) {
     }
 
     public BaseNode simplifyIdentities(BaseNode node) {
-        if (node instanceof ExponentNode exponentNode) {
+ if (node instanceof ExponentNode exponentNode) {
             if (exponentNode.right() instanceof NumberNode n) {
                 if (evaluate(n) == 1)
                     return simplify(exponentNode.left());
