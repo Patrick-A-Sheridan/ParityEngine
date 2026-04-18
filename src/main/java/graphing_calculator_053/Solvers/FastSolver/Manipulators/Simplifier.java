@@ -64,10 +64,10 @@ public class Simplifier {
             return new EquivalenceNode(simplify(e.left()), simplify(e.right()));
         }
 
-       else if (node instanceof MultiplicationNode a) {
+        else if (node instanceof MultiplicationNode a) {
             if (a.right() instanceof NumberNode && a.left() instanceof NumberNode) {
                 return new FastNumberNode(evaluate(a.left()) * evaluate(a.right()));
-            } else if (a.right() instanceof VariableNode v) {
+            } else if (a.right() instanceof VariableNode v && a.left() instanceof NumberNode) {
                 return new TermNode(new MultiplicationNode(simplifyIdentities(simplify(a.left())), v));
             } else if (a.left() instanceof VariableNode v && a.right() instanceof NumberNode n) {
                 return new TermNode(new MultiplicationNode(simplifyIdentities(simplify(n)), v));
@@ -76,7 +76,6 @@ public class Simplifier {
             } else
                 return new MultiplicationNode(simplify(simplifyIdentities(a.left())), simplify(simplifyIdentities(a.right())));
 
-        
         }
 
         else if (node instanceof AdditionNode a) {
@@ -168,35 +167,103 @@ else if (node instanceof ReciprocalTrigNode a) {
                 if (evaluate(n) == 0)
                     return new FastNumberNode(1);
             }
+            return new ExponentNode(simplifyIdentities(exponentNode.left()), simplifyIdentities(exponentNode.right()));
         }
         if (node instanceof DivisionNode d) {
             if (d.left().equals(d.right())) {
                 return new FastNumberNode(1);
             }
             if (d.left() instanceof MultiplicationNode M1) {
-                if (M1.left().equals(d.right())) {return M1.right();}
-                if(M1.right().equals(d.right())){ return M1.left();}
+                if (M1.left().equals(d.right())) {
+                    return M1.right();
+                }
+                if (M1.right().equals(d.right())) {
+                    return M1.left();
+                }
             }
-             if (d.right() instanceof MultiplicationNode M2) {
-                  if (M2.left().equals(d.left())) {return new DivisionNode(new FastNumberNode(1), M2.right());}
-                  if (M2.right().equals(d.left())) {return new DivisionNode(new FastNumberNode(1), M2.left());}
+            if (d.right() instanceof MultiplicationNode M2) {
+                if (M2.left().equals(d.left())) {
+                    return new DivisionNode(new FastNumberNode(1), M2.right());
+                }
+                if (M2.right().equals(d.left())) {
+                    return new DivisionNode(new FastNumberNode(1), M2.left());
+                }
             }
-
+return new DivisionNode(simplifyIdentities(d.left()), simplifyIdentities(d.right()));
         }
+
         if (node instanceof MultiplicationNode a) {
+
             if (a.right() instanceof NumberNode n) {
-                if (evaluate(n) == 1)
+                if (evaluate(n) == 1) {
                     return simplify(a.left());
-                if (evaluate(n) == 0)
+                } else if (evaluate(n) == 0) {
                     return new FastNumberNode(0);
+                }
             }
             if (a.left() instanceof NumberNode n) {
-                if (evaluate(n) == 1)
+                if (evaluate(n) == 1) {
                     return simplify(a.right());
-                if (evaluate(n) == 0)
+                } else if (evaluate(n) == 0) {
                     return new FastNumberNode(0);
+                }
             }
+            if (a.right() instanceof VariableNode right && a.left() instanceof VariableNode left) {
+                if (left.type().equals(right.type())) {
+                    return new ExponentNode(left, new FastNumberNode(2));
+                }
+            }
+            if (a.left() instanceof ExponentNode tNode && a.right() instanceof VariableNode vNode) {
+                if (tNode.right() instanceof FastNumberNode NNode && tNode.left() instanceof VariableNode vNode2
+                        && vNode2.type().equals(vNode.type())) {
+                    return new ExponentNode(new VariableNode(vNode.type()),
+                            new FastNumberNode(NNode.value() + 1));
+                }
+            }
+
+            if (a.right() instanceof ExponentNode tNode && a.left() instanceof VariableNode vNode) {
+                if (tNode.right() instanceof FastNumberNode NNode && tNode.left() instanceof VariableNode vNode2
+                        && vNode2.type().equals(vNode.type())) {
+                    return new ExponentNode(new VariableNode(vNode.type()),
+                            new FastNumberNode(NNode.value() + 1));
+                }
+            }
+
+            if (a.right() instanceof TermNode tNode && a.left() instanceof VariableNode vNode) {
+                if (tNode.node().right() instanceof VariableNode vNode2 && vNode2.type().equals(vNode.type())) {
+                    return new TermNode(new MultiplicationNode(tNode.node().left(),
+                            new ExponentNode(new VariableNode(vNode.type()), new FastNumberNode(2))));
+                }
+            }
+            if (a.left() instanceof TermNode tNode && a.right() instanceof VariableNode vNode) {
+                if (tNode.node().right() instanceof VariableNode vNode2 && vNode2.type().equals(vNode.type())) {
+                    return new TermNode(new MultiplicationNode(tNode.node().left(),
+                            new ExponentNode(new VariableNode(vNode.type()), new FastNumberNode(2))));
+                }
+            }
+            if (a.right() instanceof TermNode tNode && a.left() instanceof VariableNode vNode) {
+                if (tNode.node().right() instanceof ExponentNode ENode) {
+                    if (ENode.right() instanceof FastNumberNode Eright && ENode.left() instanceof VariableNode vNode2
+                            && vNode2.type().equals(vNode.type())) {
+                        return new TermNode(new MultiplicationNode(tNode.node().left(),
+                                new ExponentNode(new VariableNode(vNode.type()),
+                                        new FastNumberNode(Eright.value() + 1))));
+                    }
+                }
+            }
+            if (a.left() instanceof TermNode tNode && a.right() instanceof VariableNode vNode) {
+                if (tNode.node().right() instanceof ExponentNode ENode) {
+                    if (ENode.right() instanceof FastNumberNode Eright && ENode.left() instanceof VariableNode vNode2
+                            && vNode2.type().equals(vNode.type())) {
+                        return new TermNode(new MultiplicationNode(tNode.node().left(),
+                                new ExponentNode(new VariableNode(vNode.type()),
+                                        new FastNumberNode(Eright.value() + 1))));
+                    }
+                }
+            }
+
             if (a.right() instanceof AdditionNode gamma) {
+                System.out.println("CHECK");
                 return new AdditionNode((simplify(new MultiplicationNode(a.left(), gamma.left()))),
                         simplify(new MultiplicationNode(a.left(), gamma.right())));
             }
@@ -212,8 +279,11 @@ else if (node instanceof ReciprocalTrigNode a) {
                 return new SubtractionNode((simplify(new MultiplicationNode(a.right(), gamma.left()))),
                         simplify(new MultiplicationNode(a.right(), gamma.right())));
             }
-
-        } else if (node instanceof AdditionNode a) {
+            System.out.println(a);
+  return new MultiplicationNode(simplifyIdentities(a.left()), simplifyIdentities(a.right()));
+        }
+        
+        else if (node instanceof AdditionNode a) {
             if (a.right() instanceof NumberNode n && evaluate(n) == 0)
                 return simplify(a.left());
             if (a.left() instanceof NumberNode n && evaluate(n) == 0)
@@ -237,7 +307,7 @@ else if (node instanceof ReciprocalTrigNode a) {
                             new FastNumberNode(evaluate(v_1.node().left()) + 1), v_2));
                 }
             }
-
+                        return new AdditionNode(simplifyIdentities(a.left()), simplifyIdentities(a.right()));
         }
         return node;
     }
