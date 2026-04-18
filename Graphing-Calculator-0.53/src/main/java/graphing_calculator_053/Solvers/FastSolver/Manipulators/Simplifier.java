@@ -263,7 +263,6 @@ return new DivisionNode(simplifyIdentities(d.left()), simplifyIdentities(d.right
             }
 
             if (a.right() instanceof AdditionNode gamma) {
-                System.out.println("CHECK");
                 return new AdditionNode((simplify(new MultiplicationNode(a.left(), gamma.left()))),
                         simplify(new MultiplicationNode(a.left(), gamma.right())));
             }
@@ -279,7 +278,6 @@ return new DivisionNode(simplifyIdentities(d.left()), simplifyIdentities(d.right
                 return new SubtractionNode((simplify(new MultiplicationNode(a.right(), gamma.left()))),
                         simplify(new MultiplicationNode(a.right(), gamma.right())));
             }
-            System.out.println(a);
   return new MultiplicationNode(simplifyIdentities(a.left()), simplifyIdentities(a.right()));
         }
         
