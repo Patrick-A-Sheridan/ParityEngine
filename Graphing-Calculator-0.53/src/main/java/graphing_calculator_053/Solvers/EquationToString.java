@@ -3,7 +3,7 @@ package graphing_calculator_053.Solvers;
 import graphing_calculator_053.Solvers.ElementaryMath.*;
 import graphing_calculator_053.Solvers.FastSolver.FastNumberNode;
 import graphing_calculator_053.Solvers.Types.*;
-
+import graphing_calculator_053.Solvers.AdvancedMath.Trig.*;
 public class EquationToString{
 public EquationToString(){
 }
@@ -38,7 +38,13 @@ StringBuilder equationString = new StringBuilder();
     if (input instanceof TermNode a) {
         equationString.append("(" + equationToString(a.node()) + ")");
     }
-    
+    if (input instanceof TrigNode a) {
+        equationString.append(a.type() + "(" + equationToString(a.Function()) + ")");
+    }
+   if (input instanceof ReciprocalTrigNode a) {
+        equationString.append(a.type() + "(" + equationToString(a.Function()) + ")");
+    }    
         return equationString.toString();
 }
 }
+
