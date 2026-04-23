@@ -47,12 +47,14 @@ public static String sanitizationCheck(String input) {
 
             // Case 1: Digit/Var before Paren -> #( or x(
             boolean openingParen = (next == '(') && (Character.isDigit(current) || isVariable(current));
-            // Case 2: Paren before Digit/Var/Paren -> )# or )x or )(
-            boolean closingParen = (current == ')') && (Character.isDigit(next) || isVariable(next) || next == '(');
+            // Case 2: Functions and Paren before Digit/Var/Paren -> )# or )x or )( or functions
+            boolean closingParen = (current == ')'&& (Character.isDigit(next) || isVariable(next) || next == '('));
             // Case 3: Digit before Var -> #x
             boolean digitVar = Character.isDigit(current) && isVariable(next);
-
-            if (openingParen || closingParen || digitVar) {
+            // Case 4 number/variable then alphabetic
+            boolean function = ((Character.isDigit(current) || isVariable(current) || current == ')')
+                    && Character.isAlphabetic(next));
+            if (openingParen || closingParen || digitVar || function) {
                 end.append("*");
             }
         }
