@@ -1,32 +1,27 @@
 (function () {
   const DEBUG = false;
-const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes in milliseconds
-const BACKEND_URL = "https://parityengine.onrender.com"; // Create a simple /ping endpoint in Spring Boot
 
-function keepAlive() {
-    fetch(BACKEND_URL)
-        .then(() => console.log("Backend pinged to stay awake."))
-        .catch(err => console.error("Ping failed:", err));
-}
+  const BACKEND_URL = "https://parityengine.onrender.com";
+  const API_BASE = BACKEND_URL;
+  const PING_URL = `${BACKEND_URL}/ping`;
+  const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes
 
-// Start the ping cycle
-setInterval(keepAlive, PING_INTERVAL);
   const PANELS = [
     "DescriptionWindow",
     "FunctionGrapherWindow",
     "AlgebraEngineWindow",
     "LibraryWindow",
     "MatrixEngineWindow",
-    "SettingsWindow"
+    "SettingsWindow",
   ];
 
   const NAV_MAP = {
-    "DescriptionSelect": "DescriptionWindow",
-    "GraphingEngineSelect": "FunctionGrapherWindow",
-    "AlgebraEngineSelect": "AlgebraEngineWindow",
-    "LibrarySelect": "LibraryWindow",
-    "MatrixEngineSelect": "MatrixEngineWindow",
-    "SettingsSelect": "SettingsWindow"
+    DescriptionSelect: "DescriptionWindow",
+    GraphingEngineSelect: "FunctionGrapherWindow",
+    AlgebraEngineSelect: "AlgebraEngineWindow",
+    LibrarySelect: "LibraryWindow",
+    MatrixEngineSelect: "MatrixEngineWindow",
+    SettingsSelect: "SettingsWindow",
   };
 
   function byId(id) {
@@ -51,6 +46,7 @@ setInterval(keepAlive, PING_INTERVAL);
 
   function appendConsoleLine(outputEl, text, color) {
     if (!outputEl) return;
+
     const row = document.createElement("div");
     row.className = "log-entry";
 
@@ -61,6 +57,33 @@ setInterval(keepAlive, PING_INTERVAL);
     row.appendChild(span);
     outputEl.appendChild(row);
     outputEl.scrollTop = outputEl.scrollHeight;
+  }
+
+  async function keepAlive() {
+    try {
+      await fetch(PING_URL, {
+        method: "GET",
+        cache: "no-store",
+      });
+      if (DEBUG) console.log("Backend pinged to stay awake.");
+    } catch (err) {
+      if (DEBUG) console.error("Ping failed:", err);
+    }
+  }
+
+  function startKeepAlive() {
+    keepAlive();
+    setInterval(() => {
+      if (document.visibilityState !== "hidden") {
+        keepAlive();
+      }
+    }, PING_INTERVAL);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        keepAlive();
+      }
+    });
   }
 
   // --- Console Logic --- //
@@ -79,10 +102,10 @@ setInterval(keepAlive, PING_INTERVAL);
       e.target.value = "";
 
       try {
-        const response = await fetch("/api/math/consoleFast", {
+        const response = await fetch(`${API_BASE}/api/math/consoleFast`, {
           method: "POST",
           headers: { "Content-Type": "text/plain" },
-          body: input
+          body: input,
         });
 
         if (!response.ok) throw new Error(`Server Error ${response.status}`);
@@ -90,7 +113,11 @@ setInterval(keepAlive, PING_INTERVAL);
         const result = await response.text();
         appendConsoleLine(consoleOutput, `  ${result}`, "#00e5ff");
       } catch (err) {
-        appendConsoleLine(consoleOutput, "Error: Engine Offline or Dispatcher Failed", "#ff3333");
+        appendConsoleLine(
+          consoleOutput,
+          "Error: Engine Offline or Dispatcher Failed",
+          "#ff3333"
+        );
       }
     });
   }
@@ -116,9 +143,17 @@ setInterval(keepAlive, PING_INTERVAL);
   let abortController = null;
   let lastRequestedStep = NaN;
 
-  const zoomFactor = 1.2;
-  const MAX_POINTS = 1000000;
   const MIN_PIXEL_LABEL_SPACING = 42;
+  const MAX_POINTS = 1_000_000;
+  const MAX_POINT_COUNT_WARNING = 250_000;
+
+  function canvasClientWidth() {
+    return canvas ? canvas.clientWidth : 0;
+  }
+
+  function canvasClientHeight() {
+    return canvas ? canvas.clientHeight : 0;
+  }
 
   function clearBackingStore() {
     if (!canvas || !ctx) return;
@@ -147,228 +182,275 @@ setInterval(keepAlive, PING_INTERVAL);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
- function toPixelX(x) {
-  return (x - offsetX) * scaleX + canvas.clientWidth / 2;
-}
+  function toPixelX(x) {
+    return (x - offsetX) * scaleX + canvasClientWidth() / 2;
+  }
 
-function toPixelY(y) {
-  return canvas.clientHeight / 2 - (y - offsetY) * scaleY;
-}
+  function toPixelY(y) {
+    return canvasClientHeight() / 2 - (y - offsetY) * scaleY;
+  }
 
-function fromPixelX(px) {
-  return (px - canvas.clientWidth / 2) / scaleX + offsetX;
-}
+  function fromPixelX(px) {
+    return (px - canvasClientWidth() / 2) / scaleX + offsetX;
+  }
 
-function fromPixelY(py) {
-  return (canvas.clientHeight / 2 - py) / scaleY + offsetY;
-}
+  function fromPixelY(py) {
+    return (canvasClientHeight() / 2 - py) / scaleY + offsetY;
+  }
 
- function getViewportBounds() {
-  return {
-    minX: fromPixelX(0),
-    maxX: fromPixelX(canvas.clientWidth),
-    minY: fromPixelY(canvas.clientHeight),
-    maxY: fromPixelY(0)
-  };
-}
+  function getViewportBounds() {
+    return {
+      minX: fromPixelX(0),
+      maxX: fromPixelX(canvasClientWidth()),
+      minY: fromPixelY(canvasClientHeight()),
+      maxY: fromPixelY(0),
+    };
+  }
 
   function niceTickStep(range) {
-  const target = Math.max(range / 8, Number.EPSILON);
-  const pow = Math.pow(10, Math.floor(Math.log10(target)));
-  const frac = target / pow;
+    const safeRange = Math.max(Math.abs(range), Number.EPSILON);
+    const target = safeRange / 8;
+    const pow = Math.pow(10, Math.floor(Math.log10(target)));
+    const frac = target / pow;
 
-  let niceFrac;
+    let niceFrac;
+    if (frac <= 1) niceFrac = 1;
+    else if (frac <= 2) niceFrac = 2;
+    else if (frac <= 5) niceFrac = 5;
+    else niceFrac = 10;
 
-  if (frac <= 1) niceFrac = 1;
-  else if (frac <= 2) niceFrac = 2;
-  else if (frac <= 5) niceFrac = 5;
-  else niceFrac = 10;
+    return niceFrac * pow;
+  }
 
-  return niceFrac * pow;
-}
+  function formatAxisValue(value, step) {
+    if (!Number.isFinite(value)) return "";
 
-function formatAxisValue(value, step) {
-  if (!Number.isFinite(value)) return "";
+    const absStep = Math.abs(step) || 1;
+    const decimals = Math.min(
+      15,
+      Math.max(0, Math.ceil(-Math.log10(absStep)) + 1)
+    );
 
-  const absStep = Math.abs(step) || 1;
+    const rounded =
+      Math.round((value + Number.EPSILON) * 10 ** decimals) / 10 ** decimals;
 
-  const decimals = Math.min(
-    12,
-    Math.max(0, Math.ceil(-Math.log10(absStep)) + 1)
-  );
+    return rounded
+      .toFixed(decimals)
+      .replace(/\.?0+$/, "")
+      .replace(/^-0$/, "0");
+  }
 
-  const rounded =
-    Math.round((value + Number.EPSILON) * 10 ** decimals) /
-    10 ** decimals;
+  function drawGridAndAxes() {
+    if (!canvas || !ctx) return;
 
-  return rounded
-    .toFixed(decimals)
-    .replace(/\.?0+$/, "")
-    .replace(/^-0$/, "0");
-}
+    setCanvasSize();
 
- function drawGridAndAxes() {
-  if (!canvas || !ctx) return;
+    const w = canvasClientWidth();
+    const h = canvasClientHeight();
+    const b = getViewportBounds();
 
-  setCanvasSize();
+    ctx.clearRect(0, 0, w, h);
 
-  const w = canvas.clientWidth;
-  const h = canvas.clientHeight;
-  const b = getViewportBounds();
+    const xStep = niceTickStep(b.maxX - b.minX || 1);
+    const yStep = niceTickStep(b.maxY - b.minY || 1);
 
-  ctx.clearRect(0, 0, w, h);
+    const xStart = Math.floor(b.minX / xStep) * xStep;
+    const yStart = Math.floor(b.minY / yStep) * yStep;
 
-  const xStep = niceTickStep(b.maxX - b.minX || 1);
-  const yStep = niceTickStep(b.maxY - b.minY || 1);
+    ctx.save();
+    ctx.strokeStyle = "#2b2b2b";
+    ctx.fillStyle = "#a9a9a9";
+    ctx.font = "12px sans-serif";
+    ctx.lineWidth = 1;
 
-  const xStart = Math.floor(b.minX / xStep) * xStep;
-  const yStart = Math.floor(b.minY / yStep) * yStep;
+    const zeroX = toPixelX(0);
+    const zeroY = toPixelY(0);
 
-  ctx.save();
+    // X grid + labels
+    ctx.textAlign = "center";
+    let lastLabelPx = -Infinity;
 
-  ctx.strokeStyle = "#2b2b2b";
-  ctx.fillStyle = "#a9a9a9";
-  ctx.font = "12px sans-serif";
+    for (let x = xStart; x <= b.maxX + xStep; x += xStep) {
+      const px = toPixelX(x);
 
-  const zeroX = toPixelX(0);
-  const zeroY = toPixelY(0);
+      if (px >= -1 && px <= w + 1) {
+        ctx.beginPath();
+        ctx.moveTo(px, 0);
+        ctx.lineTo(px, h);
+        ctx.stroke();
 
-  // X grid
-  ctx.textAlign = "center";
-  let lastPx = -Infinity;
-
-  for (let x = xStart; x <= b.maxX; x += xStep) {
-    const px = toPixelX(x);
-
-    ctx.beginPath();
-    ctx.moveTo(px, 0);
-    ctx.lineTo(px, h);
-    ctx.stroke();
-
-    if (Math.abs(px - lastPx) > MIN_PIXEL_LABEL_SPACING) {
-      ctx.fillText(formatAxisValue(x, xStep), px, h - 12);
-      lastPx = px;
+        if (Math.abs(px - lastLabelPx) > MIN_PIXEL_LABEL_SPACING) {
+          ctx.fillText(formatAxisValue(x, xStep), px, h - 12);
+          lastLabelPx = px;
+        }
+      }
     }
-  }
 
-  // Y grid
-  ctx.textAlign = "left";
-  lastPx = -Infinity;
+    // Y grid + labels
+    ctx.textAlign = "left";
+    lastLabelPx = -Infinity;
 
-  for (let y = yStart; y <= b.maxY; y += yStep) {
-    const py = toPixelY(y);
+    for (let y = yStart; y <= b.maxY + yStep; y += yStep) {
+      const py = toPixelY(y);
 
-    ctx.beginPath();
-    ctx.moveTo(0, py);
-    ctx.lineTo(w, py);
-    ctx.stroke();
+      if (py >= -1 && py <= h + 1) {
+        ctx.beginPath();
+        ctx.moveTo(0, py);
+        ctx.lineTo(w, py);
+        ctx.stroke();
 
-    if (Math.abs(py - lastPx) > MIN_PIXEL_LABEL_SPACING) {
-      ctx.fillText(formatAxisValue(y, yStep),40, py);
-      lastPx = py;
+        if (Math.abs(py - lastLabelPx) > MIN_PIXEL_LABEL_SPACING) {
+          ctx.fillText(formatAxisValue(y, yStep), 40, py);
+          lastLabelPx = py;
+        }
+      }
     }
-  }
 
-  // axes
-  ctx.strokeStyle = "#888";
-  ctx.lineWidth = 2;
+    // Axes
+    ctx.strokeStyle = "#888";
+    ctx.lineWidth = 2;
 
-  if (zeroY >= 0 && zeroY <= h) {
-    ctx.beginPath();
-    ctx.moveTo(0, zeroY);
-    ctx.lineTo(w, zeroY);
-    ctx.stroke();
-  }
-
-  if (zeroX >= 0 && zeroX <= w) {
-    ctx.beginPath();
-    ctx.moveTo(zeroX, 0);
-    ctx.lineTo(zeroX, h);
-    ctx.stroke();
-  }
-
-  ctx.restore();
-}
-
- function drawFunctionFromPoints(pointsArray) {
-  if (!canvas || !ctx || !pointsArray?.length) return;
-
-  ctx.save();
-  ctx.strokeStyle = "#00ffcc";
-  ctx.lineWidth = 1.5;
-
-  let started = false;
-  let prevX = null;
-
-  const GAP_THRESHOLD = lastRequestedStep * 1.5;
-  const Y_BREAK = 1e6; // safety cutoff for spikes
-
-  ctx.beginPath();
-
-  for (const p of pointsArray) {
-    if (!p || p.length < 2) continue;
-
-    const x = Number(p[0]);
-    const y = Number(p[1]);
-
-    // HARD DISCONTINUITY CONDITIONS
-    if (
-      !Number.isFinite(x) ||
-      !Number.isFinite(y) ||
-      Math.abs(y) > Y_BREAK
-    ) {
-      ctx.stroke();
+    if (zeroY >= 0 && zeroY <= h) {
       ctx.beginPath();
-      started = false;
-      prevX = null;
-      continue;
-    }
-
-    // GAP DETECTION (true asymptote spacing)
-    if (prevX !== null && Math.abs(x - prevX) > GAP_THRESHOLD) {
+      ctx.moveTo(0, zeroY);
+      ctx.lineTo(w, zeroY);
       ctx.stroke();
+    }
+
+    if (zeroX >= 0 && zeroX <= w) {
       ctx.beginPath();
-      started = false;
+      ctx.moveTo(zeroX, 0);
+      ctx.lineTo(zeroX, h);
+      ctx.stroke();
     }
 
-    const px = toPixelX(x);
-    const py = toPixelY(y);
-
-    if (!started) {
-      ctx.moveTo(px, py);
-      started = true;
-    } else {
-      ctx.lineTo(px, py);
-    }
-
-    prevX = x;
+    ctx.restore();
   }
 
-  ctx.stroke();
-  ctx.restore();
-}
+  function drawFunctionFromPoints(pointsArray) {
+    if (!canvas || !ctx || !pointsArray?.length) return;
+
+    const w = canvasClientWidth();
+    const h = canvasClientHeight();
+
+    ctx.save();
+    ctx.strokeStyle = "#00ffcc";
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+
+    let started = false;
+    let prevPx = NaN;
+    let prevPy = NaN;
+
+    ctx.beginPath();
+
+    for (const p of pointsArray) {
+      if (!p || p.length < 2) continue;
+
+      const x = Number(p[0]);
+      const y = Number(p[1]);
+
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        if (started) {
+          ctx.stroke();
+          ctx.beginPath();
+          started = false;
+        }
+        prevPx = NaN;
+        prevPy = NaN;
+        continue;
+      }
+
+      if (Math.abs(y) > 1e12) {
+        if (started) {
+          ctx.stroke();
+          ctx.beginPath();
+          started = false;
+        }
+        prevPx = NaN;
+        prevPy = NaN;
+        continue;
+      }
+
+      const px = toPixelX(x);
+      const py = toPixelY(y);
+
+      const offscreenTooFar =
+        px < -w * 2 || px > w * 3 || py < -h * 2 || py > h * 3;
+
+      if (offscreenTooFar) {
+        if (started) {
+          ctx.stroke();
+          ctx.beginPath();
+          started = false;
+        }
+        prevPx = NaN;
+        prevPy = NaN;
+        continue;
+      }
+
+      const hugeJump =
+        Number.isFinite(prevPx) &&
+        Number.isFinite(prevPy) &&
+        Math.abs(px - prevPx) > 1000 &&
+        Math.abs(py - prevPy) > 1000;
+
+      const bigVerticalJump =
+        Number.isFinite(prevPy) && Math.abs(py - prevPy) > Math.max(400, h * 2);
+
+      if (hugeJump || bigVerticalJump) {
+        if (started) {
+          ctx.stroke();
+          ctx.beginPath();
+          started = false;
+        }
+      }
+
+      if (!started) {
+        ctx.moveTo(px, py);
+        started = true;
+      } else {
+        ctx.lineTo(px, py);
+      }
+
+      prevPx = px;
+      prevPy = py;
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
 
   async function fetchTable(expression, minX, maxX, step, signal) {
-    if (!expression || !isFinite(minX) || !isFinite(maxX) || !isFinite(step) || step === 0) {
+    if (
+      !expression ||
+      !isFinite(minX) ||
+      !isFinite(maxX) ||
+      !isFinite(step) ||
+      step === 0
+    ) {
       if (DEBUG) console.warn("fetchTable invalid args", { expression, minX, maxX, step });
       return [];
     }
 
-    const approxPoints = Math.ceil((maxX - minX) / Math.abs(step)) + 1;
+    const approxPoints = Math.floor((maxX - minX) / Math.abs(step)) + 1;
 
     if (approxPoints > MAX_POINTS) {
-      if (!confirm(`Request would produce ${approxPoints.toLocaleString()} points. Continue?`)) {
-        return [];
-      }
+      const ok = confirm(
+        `Request would produce about ${approxPoints.toLocaleString()} points. Continue?`
+      );
+      if (!ok) return [];
     }
 
-
-const url =
-  `https://parityengine.onrender.com/api/table?expression=${encodeURIComponent(expression)}` +
-  `&minX=${minX}&maxX=${maxX}&step=${step}`;
+    const url =
+      `${API_BASE}/api/table?expression=${encodeURIComponent(expression)}` +
+      `&minX=${encodeURIComponent(minX)}` +
+      `&maxX=${encodeURIComponent(maxX)}` +
+      `&step=${encodeURIComponent(step)}`;
 
     try {
-      const res = await fetch(url, { signal });
+      const res = await fetch(url, { signal, cache: "no-store" });
       if (!res.ok) {
         if (DEBUG) console.error("fetchTable HTTP error", res.status);
         return [];
@@ -380,119 +462,173 @@ const url =
         return [];
       }
 
-      return data.map((d) => {
+      const cleaned = [];
+      for (const d of data) {
         if (Array.isArray(d)) {
-          return [parsePointValue(d[0]), parsePointValue(d[1])];
-        }
-        if (d && typeof d === "object") {
+          cleaned.push([parsePointValue(d[0]), parsePointValue(d[1])]);
+        } else if (d && typeof d === "object") {
           const x = "x" in d ? d.x : d[0];
           const y = "y" in d ? d.y : d[1];
-          return [parsePointValue(x), parsePointValue(y)];
+          cleaned.push([parsePointValue(x), parsePointValue(y)]);
         }
-        return [NaN, NaN];
-      });
+      }
+
+      return cleaned;
     } catch (err) {
       if (DEBUG) console.error("fetchTable error", err);
       return [];
     }
   }
 
- function drawFrame() {
-  if (!canvas || !ctx) return;
-  drawGridAndAxes();
-  drawFunctionFromPoints(points);
-}
+  function resampleToStepGrid(rawPoints, minX, maxX, stepAbs) {
+    if (!Array.isArray(rawPoints) || rawPoints.length === 0) return [];
 
-  async function graph() {
-  if (!exprEl) return;
+    const filtered = rawPoints
+      .filter(
+        (p) =>
+          Array.isArray(p) &&
+          Number.isFinite(p[0]) &&
+          Number.isFinite(p[1])
+      )
+      .slice()
+      .sort((a, b) => a[0] - b[0]);
 
-  const expr = exprEl.value?.trim();
-  if (expr) currentExpression = expr;
-  if (!currentExpression) return;
+    if (filtered.length === 0) return [];
 
-  const minX = parseFloat(minEl?.value);
-  const maxX = parseFloat(maxEl?.value);
+    const resampled = [];
+    const n = filtered.length;
 
-  if (!Number.isFinite(minX) || !Number.isFinite(maxX) || maxX <= minX) return;
+    let j = 0;
+    const count = Math.floor((maxX - minX) / stepAbs);
 
-  let step = parseFloat(stepEl?.value);
+    for (let i = 0; i <= count; i++) {
+      const x = minX + i * stepAbs;
 
-  if (!Number.isFinite(step) || step <= 0) {
-    step = (maxX - minX) / 1000;
-  }
+      while (
+        j + 1 < n &&
+        filtered[j + 1][0] < x &&
+        Math.abs(filtered[j + 1][0] - x) <= Math.abs(filtered[j][0] - x)
+      ) {
+        j++;
+      }
 
-  lastRequestedStep = step;
+      while (j + 1 < n && filtered[j + 1][0] < x) {
+        j++;
+      }
 
-  abortController?.abort();
-  abortController = new AbortController();
+      if (j + 1 >= n) {
+        const last = filtered[n - 1];
+        if (last) resampled.push([x, last[1]]);
+        continue;
+      }
 
-  const rawPoints = await fetchTable(
-    currentExpression,
-    minX,
-    maxX,
-    step,
-    abortController.signal
-  );
+      const p0 = filtered[j];
+      const p1 = filtered[j + 1];
 
-  if (!rawPoints?.length) {
-    points = [];
-    drawFrame();
-    return;
-  }
+      if (!p0 || !p1) continue;
 
-  // ---- RESAMPLE TO STRICT STEP GRID ----
-  const resampled = [];
+      const x0 = p0[0];
+      const y0 = p0[1];
+      const x1 = p1[0];
+      const y1 = p1[1];
 
-  const stepAbs = Math.abs(step);
-  const start = minX;
-  const end = maxX;
+      if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) {
+        continue;
+      }
 
-  for (let x = start; x <= end; x += stepAbs) {
-    // find closest backend point
-    let best = null;
-    let bestDist = Infinity;
+      if (x1 === x0) {
+        resampled.push([x, y0]);
+        continue;
+      }
 
-    for (const p of rawPoints) {
-      if (!p || !Number.isFinite(p[0]) || !Number.isFinite(p[1])) continue;
+      const t = (x - x0) / (x1 - x0);
+      const y = y0 + t * (y1 - y0);
 
-      const dx = Math.abs(p[0] - x);
-      if (dx < bestDist) {
-        bestDist = dx;
-        best = p;
+      if (Number.isFinite(y)) {
+        resampled.push([x, y]);
+      } else {
+        resampled.push([x, NaN]);
       }
     }
 
-    if (best) {
-      resampled.push([x, best[1]]);
-    }
+    return resampled;
   }
 
-  points = resampled;
-  drawFrame();
-}
+  function drawFrame() {
+    if (!canvas || !ctx) return;
+    drawGridAndAxes();
+    drawFunctionFromPoints(points);
+  }
+
+  async function graph() {
+    if (!exprEl) return;
+
+    const expr = exprEl.value?.trim();
+    if (expr) currentExpression = expr;
+    if (!currentExpression) return;
+
+    const minX = parseFloat(minEl?.value);
+    const maxX = parseFloat(maxEl?.value);
+
+    if (!Number.isFinite(minX) || !Number.isFinite(maxX) || maxX <= minX) return;
+
+    let step = parseFloat(stepEl?.value);
+    if (!Number.isFinite(step) || step <= 0) {
+      step = (maxX - minX) / 1000;
+    }
+
+    lastRequestedStep = step;
+
+    abortController?.abort();
+    abortController = new AbortController();
+
+    const rawPoints = await fetchTable(
+      currentExpression,
+      minX,
+      maxX,
+      step,
+      abortController.signal
+    );
+
+    if (!rawPoints?.length) {
+      points = [];
+      drawFrame();
+      return;
+    }
+
+    const stepAbs = Math.abs(step);
+
+    if (rawPoints.length > MAX_POINT_COUNT_WARNING && DEBUG) {
+      console.warn("Large point set:", rawPoints.length);
+    }
+
+    // Keep x values locked to the requested step grid, but interpolate y from the backend table.
+    points = resampleToStepGrid(rawPoints, minX, maxX, stepAbs);
+
+    drawFrame();
+  }
 
   function onWheel(e) {
-  if (!canvas) return;
-  e.preventDefault();
+    if (!canvas) return;
+    e.preventDefault();
 
-  const rect = canvas.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
 
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+    const worldX = fromPixelX(mx);
+    const worldY = fromPixelY(my);
 
-  const worldX = fromPixelX(mx);
-  const worldY = fromPixelY(my);
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
 
-  const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    scaleX *= factor;
+    scaleY *= factor;
 
-  scaleX *= factor;
-  scaleY *= factor;
+    offsetX = worldX - (mx - canvasClientWidth() / 2) / scaleX;
+    offsetY = worldY - (canvasClientHeight() / 2 - my) / scaleY;
 
-  offsetX = worldX - (mx - canvas.clientWidth / 2) / scaleX;
-  offsetY = worldY - (canvas.clientHeight / 2 - my) / scaleY;
-
-  drawFrame();
-}
+    drawFrame();
+  }
 
   function onMouseDown(e) {
     dragging = true;
@@ -501,6 +637,7 @@ const url =
 
   function onMouseUp() {
     dragging = false;
+    dragStart = null;
     drawFrame();
   }
 
@@ -556,7 +693,10 @@ const url =
       if (!btn) return;
 
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
+        document
+          .querySelectorAll(".nav-item")
+          .forEach((b) => b.classList.remove("active"));
+
         btn.classList.add("active");
         showSection(NAV_MAP[buttonId]);
       });
@@ -602,14 +742,16 @@ const url =
     });
 
     if (DEBUG) {
-        fetch("https://parityengine.onrender.com")
-        .then((r) => r.json())
-        .then((j) => console.log("/api/test:", j))
+      fetch(`${API_BASE}`)
+        .then((r) => r.text())
+        .then((t) => console.log("Backend reachable:", t.slice(0, 80)))
         .catch(() => {});
     }
   }
 
   function start() {
+    startKeepAlive();
+
     wireNavigation();
 
     safeAddClick("DescriptionSelect", () => showSection("DescriptionWindow"));
