@@ -173,25 +173,39 @@ function fromPixelY(py) {
 }
 
   function niceTickStep(range) {
-    const target = Math.max(range / 8, Number.EPSILON);
-    const pow = Math.pow(10, Math.floor(Math.log10(target)));
-    const frac = target / pow;
+  const target = Math.max(range / 8, Number.EPSILON);
+  const pow = Math.pow(10, Math.floor(Math.log10(target)));
+  const frac = target / pow;
 
-    let niceFrac;
-    if (frac <= 1) niceFrac = 1;
-    else if (frac <= 2) niceFrac = 2;
-    else if (frac <= 5) niceFrac = 5;
-    else niceFrac = 10;
+  let niceFrac;
 
-    return niceFrac * pow;
-  }
+  if (frac <= 1) niceFrac = 1;
+  else if (frac <= 2) niceFrac = 2;
+  else if (frac <= 5) niceFrac = 5;
+  else niceFrac = 10;
 
-  function formatNumberForStep(val, step) {
-    if (!Number.isFinite(val)) return "";
-    const absStep = Math.abs(step) || 1;
-    const decimals = Math.min(12, Math.max(0, -Math.floor(Math.log10(absStep))));
-    return Number(val.toFixed(decimals)).toString();
-  }
+  return niceFrac * pow;
+}
+
+function formatAxisValue(value, step) {
+  if (!Number.isFinite(value)) return "";
+
+  const absStep = Math.abs(step) || 1;
+
+  const decimals = Math.min(
+    12,
+    Math.max(0, Math.ceil(-Math.log10(absStep)) + 1)
+  );
+
+  const rounded =
+    Math.round((value + Number.EPSILON) * 10 ** decimals) /
+    10 ** decimals;
+
+  return rounded
+    .toFixed(decimals)
+    .replace(/\.?0+$/, "")
+    .replace(/^-0$/, "0");
+}
 
  function drawGridAndAxes() {
   if (!canvas || !ctx) return;
@@ -232,7 +246,7 @@ function fromPixelY(py) {
     ctx.stroke();
 
     if (Math.abs(px - lastPx) > MIN_PIXEL_LABEL_SPACING) {
-      ctx.fillText(x.toFixed(6), px, h - 12);
+      ctx.fillText(formatAxisValue(x, xStep), px, h - 12);
       lastPx = px;
     }
   }
@@ -250,7 +264,7 @@ function fromPixelY(py) {
     ctx.stroke();
 
     if (Math.abs(py - lastPx) > MIN_PIXEL_LABEL_SPACING) {
-      ctx.fillText(y.toFixed(6),40, py);
+      ctx.fillText(formatAxisValue(y, yStep),40, py);
       lastPx = py;
     }
   }
