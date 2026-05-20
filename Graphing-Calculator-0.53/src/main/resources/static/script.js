@@ -232,7 +232,7 @@ function fromPixelY(py) {
     ctx.stroke();
 
     if (Math.abs(px - lastPx) > MIN_PIXEL_LABEL_SPACING) {
-      ctx.fillText(x.toFixed(2), px, h - 12);
+      ctx.fillText(x.toFixed(6), px, h - 12);
       lastPx = px;
     }
   }
@@ -250,7 +250,7 @@ function fromPixelY(py) {
     ctx.stroke();
 
     if (Math.abs(py - lastPx) > MIN_PIXEL_LABEL_SPACING) {
-      ctx.fillText(y.toFixed(2),40, py);
+      ctx.fillText(y.toFixed(6),40, py);
       lastPx = py;
     }
   }
