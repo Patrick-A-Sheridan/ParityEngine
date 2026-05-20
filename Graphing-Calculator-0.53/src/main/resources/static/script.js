@@ -208,197 +208,188 @@
   }
 
   function niceTickStep(range) {
-    const safeRange = Math.max(Math.abs(range), Number.EPSILON);
-    const target = safeRange / 8;
-    const pow = Math.pow(10, Math.floor(Math.log10(target)));
-    const frac = target / pow;
+  const safeRange = Math.max(Math.abs(range), 1e-15);
+  const target = safeRange / 8;
+  const pow = Math.pow(10, Math.floor(Math.log10(target)));
+  const frac = target / pow;
+  
+  let niceFrac;
+  if (frac <= 1) niceFrac = 1;
+  else if (frac <= 2) niceFrac = 2;
+  else if (frac <= 5) niceFrac = 5;
+  else niceFrac = 10;
+  
+  return niceFrac * pow;
+}
 
-    let niceFrac;
-    if (frac <= 1) niceFrac = 1;
-    else if (frac <= 2) niceFrac = 2;
-    else if (frac <= 5) niceFrac = 5;
-    else niceFrac = 10;
+function formatAxisValue(value, step) {
+  if (!Number.isFinite(value)) return "";
 
-    return niceFrac * pow;
+  const absStep = Math.abs(step) || 1;
+  const logStep = Math.floor(Math.log10(absStep));
+  let decimals = logStep < 0 ? Math.abs(logStep) : 0;
+  decimals = Math.min(20, decimals + 1);
+
+  const roundedValue = Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  let str = roundedValue.toFixed(decimals);
+  
+  if (str.includes(".")) {
+    str = str.replace(/\.?0+$/, "");
   }
+  return str === "-0" ? "0" : str;
+}
 
-  function formatAxisValue(value, step) {
-    if (!Number.isFinite(value)) return "";
+function drawGridAndAxes() {
+  if (!canvas || !ctx) return;
+  setCanvasSize();
+  const w = canvasClientWidth();
+  const h = canvasClientHeight();
+  const b = getViewportBounds();
+  ctx.clearRect(0, 0, w, h);
 
-    const absStep = Math.abs(step) || 1;
-    const decimals = Math.min(
-      15,
-      Math.max(0, Math.ceil(-Math.log10(absStep)) + 1)
-    );
+  const xStep = niceTickStep(b.maxX - b.minX || 1);
+  const yStep = niceTickStep(b.maxY - b.minY || 1);
 
-    const rounded =
-      Math.round((value + Number.EPSILON) * 10 ** decimals) / 10 ** decimals;
+  ctx.save();
+  ctx.strokeStyle = "#2b2b2b";
+  ctx.fillStyle = "#a9a9a9";
+  ctx.font = "12px sans-serif";
+  ctx.lineWidth = 1;
 
-    return rounded
-      .toFixed(decimals)
-      .replace(/\.?0+$/, "")
-      .replace(/^-0$/, "0");
-  }
+  const zeroX = toPixelX(0);
+  const zeroY = toPixelY(0);
 
-  function drawGridAndAxes() {
-    if (!canvas || !ctx) return;
+  // --- X grid + labels ---
+  ctx.textAlign = "center";
+  let lastLabelPx = -Infinity;
+  
+  const iXStart = Math.floor(b.minX / xStep);
+  const iXEnd = Math.ceil(b.maxX / xStep);
 
-    setCanvasSize();
+  for (let i = iXStart; i <= iXEnd + 1; i++) {
+    const xRaw = i * xStep;
+    const logStep = Math.floor(Math.log10(xStep));
+    const roundDecimals = logStep < 0 ? Math.abs(logStep) + 2 : 2;
+    const x = Math.round(xRaw * Math.pow(10, roundDecimals)) / Math.pow(10, roundDecimals);
 
-    const w = canvasClientWidth();
-    const h = canvasClientHeight();
-    const b = getViewportBounds();
+    const px = toPixelX(x);
+    if (px >= -1 && px <= w + 1) {
+      ctx.beginPath();
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, h);
+      ctx.stroke();
 
-    ctx.clearRect(0, 0, w, h);
-
-    const xStep = niceTickStep(b.maxX - b.minX || 1);
-    const yStep = niceTickStep(b.maxY - b.minY || 1);
-
-    const xStart = Math.floor(b.minX / xStep) * xStep;
-    const yStart = Math.floor(b.minY / yStep) * yStep;
-
-    ctx.save();
-    ctx.strokeStyle = "#2b2b2b";
-    ctx.fillStyle = "#a9a9a9";
-    ctx.font = "12px sans-serif";
-    ctx.lineWidth = 1;
-
-    const zeroX = toPixelX(0);
-    const zeroY = toPixelY(0);
-
-    // X grid + labels
-    ctx.textAlign = "center";
-    let lastLabelPx = -Infinity;
-
-    for (let x = xStart; x <= b.maxX + xStep; x += xStep) {
-      const px = toPixelX(x);
-
-      if (px >= -1 && px <= w + 1) {
-        ctx.beginPath();
-        ctx.moveTo(px, 0);
-        ctx.lineTo(px, h);
-        ctx.stroke();
-
-        if (Math.abs(px - lastLabelPx) > MIN_PIXEL_LABEL_SPACING) {
-          ctx.fillText(formatAxisValue(x, xStep), px, h - 12);
-          lastLabelPx = px;
-        }
+      if (Math.abs(px - lastLabelPx) > MIN_PIXEL_LABEL_SPACING) {
+        ctx.fillText(formatAxisValue(x, xStep), px, h - 12);
+        lastLabelPx = px;
       }
     }
-
-    // Y grid + labels
-    ctx.textAlign = "left";
-    lastLabelPx = -Infinity;
-
-    for (let y = yStart; y <= b.maxY + yStep; y += yStep) {
-      const py = toPixelY(y);
-
-      if (py >= -1 && py <= h + 1) {
-        ctx.beginPath();
-        ctx.moveTo(0, py);
-        ctx.lineTo(w, py);
-        ctx.stroke();
-
-        if (Math.abs(py - lastLabelPx) > MIN_PIXEL_LABEL_SPACING) {
-          ctx.fillText(formatAxisValue(y, yStep), 40, py);
-          lastLabelPx = py;
-        }
-      }
-    }
-
-    // Axes
-    ctx.strokeStyle = "#888";
-    ctx.lineWidth = 2;
-
-    if (zeroY >= 0 && zeroY <= h) {
-      ctx.beginPath();
-      ctx.moveTo(0, zeroY);
-      ctx.lineTo(w, zeroY);
-      ctx.stroke();
-    }
-
-    if (zeroX >= 0 && zeroX <= w) {
-      ctx.beginPath();
-      ctx.moveTo(zeroX, 0);
-      ctx.lineTo(zeroX, h);
-      ctx.stroke();
-    }
-
-    ctx.restore();
   }
 
-  function drawFunctionFromPoints(pointsArray) {
-    if (!canvas || !ctx || !pointsArray?.length) return;
+  // --- Y grid + labels ---
+  ctx.textAlign = "left";
+  lastLabelPx = -Infinity;
 
-    const w = canvasClientWidth();
-    const h = canvasClientHeight();
+  const iYStart = Math.floor(b.minY / yStep);
+  const iYEnd = Math.ceil(b.maxY / yStep);
 
-    ctx.save();
-    ctx.strokeStyle = "#00ffcc";
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
+  for (let i = iYStart; i <= iYEnd + 1; i++) {
+    const yRaw = i * yStep;
+    const logStep = Math.floor(Math.log10(yStep));
+    const roundDecimals = logStep < 0 ? Math.abs(logStep) + 2 : 2;
+    const y = Math.round(yRaw * Math.pow(10, roundDecimals)) / Math.pow(10, roundDecimals);
 
-    let started = false;
-    let prevPx = NaN;
-    let prevPy = NaN;
+    const py = toPixelY(y);
+    if (py >= -1 && py <= h + 1) {
+      ctx.beginPath();
+      ctx.moveTo(0, py);
+      ctx.lineTo(w, py);
+      ctx.stroke();
 
+      if (Math.abs(py - lastLabelPx) > MIN_PIXEL_LABEL_SPACING) {
+        ctx.fillText(formatAxisValue(y, yStep), 40, py);
+        lastLabelPx = py;
+      }
+    }
+  }
+
+  // --- Axes ---
+  ctx.strokeStyle = "#888";
+  ctx.lineWidth = 2;
+  if (zeroY >= 0 && zeroY <= h) {
     ctx.beginPath();
+    ctx.moveTo(0, zeroY);
+    ctx.lineTo(w, zeroY);
+    ctx.stroke();
+  }
+  if (zeroX >= 0 && zeroX <= w) {
+    ctx.beginPath();
+    ctx.moveTo(zeroX, 0);
+    ctx.lineTo(zeroX, h);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 
-    for (const p of pointsArray) {
-      if (!p || p.length < 2) continue;
+ let graphStep = NaN;
 
-      const x = Number(p[0]);
-      const y = Number(p[1]);
+function drawFunctionFromPoints(pointsArray, stepAbs) {
+  if (!canvas || !ctx || !pointsArray?.length) return;
 
-      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+  ctx.save();
+  ctx.strokeStyle = "#00ffcc";
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  let started = false;
+  let prevX = NaN;
+
+  ctx.beginPath();
+
+  for (const p of pointsArray) {
+    if (!p || p.length < 2) continue;
+    const x = Number(p[0]);
+    const y = Number(p[1]);
+
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      if (started) {
+        ctx.stroke();
+        ctx.beginPath();
+        started = false;
+      }
+      prevX = NaN;
+      continue;
+    }
+
+    // STRICT STEP CHECK: If the difference between the current x 
+    // and the previous x is greater than the step size, break the line.
+    if (Number.isFinite(prevX) && Number.isFinite(stepAbs) && stepAbs > 0) {
+      if (Math.abs(x - prevX) > stepAbs + 1e-9) { // 1e-9 handles loose floating-point noise
         if (started) {
           ctx.stroke();
           ctx.beginPath();
           started = false;
         }
-        prevPx = NaN;
-        prevPy = NaN;
-        continue;
       }
-
-      const px = toPixelX(x);
-      const py = toPixelY(y);
-
-      const dy =
-  Number.isFinite(prevPy) ? Math.abs(py - prevPy) : 0;
-
-const dx =
-  Number.isFinite(prevPx) ? Math.abs(px - prevPx) : 0;
-
-// only split if slope becomes absurdly vertical
-// AND points are still close horizontally
-const discontinuity =
-  dx < 25 &&
-  dy > canvasClientHeight() * 8;
-
-if (discontinuity) {
-  if (started) {
-    ctx.stroke();
-    ctx.beginPath();
-    started = false;
-  }
-}
-
-      if (!started) {
-        ctx.moveTo(px, py);
-        started = true;
-      } else {
-        ctx.lineTo(px, py);
-      }
-
-      prevPx = px;
-      prevPy = py;
     }
 
-    ctx.stroke();
-    ctx.restore();
+    const px = toPixelX(x);
+    const py = toPixelY(y);
+
+    if (!started) {
+      ctx.moveTo(px, py);
+      started = true;
+    } else {
+      ctx.lineTo(px, py);
+    }
+
+    prevX = x;
   }
+
+  if (started) ctx.stroke();
+  ctx.restore();
+}
 
   async function fetchTable(expression, minX, maxX, step, signal) {
     if (
@@ -421,11 +412,10 @@ if (discontinuity) {
       if (!ok) return [];
     }
 
-    const url =
-      `${API_BASE}/api/table?expression=${encodeURIComponent(expression)}` +
-      `&minX=${encodeURIComponent(minX)}` +
-      `&maxX=${encodeURIComponent(maxX)}` +
-      `&step=${encodeURIComponent(step)}`;
+const url = `${API_BASE}/api/table?expression=${encodeURIComponent(expression)}` + 
+            `&minX=${minX.toFixed(20).replace(/\.?0+$/, "")}` + 
+            `&maxX=${maxX.toFixed(20).replace(/\.?0+$/, "")}` + 
+            `&step=${step.toFixed(20).replace(/\.?0+$/, "")}`;
 
     try {
       const res = await fetch(url, { signal, cache: "no-store" });
@@ -458,85 +448,76 @@ if (discontinuity) {
     }
   }
 
-  function resampleToStepGrid(rawPoints, minX, maxX, stepAbs) {
-    if (!Array.isArray(rawPoints) || rawPoints.length === 0) return [];
+function resampleToStepGrid(rawPoints, minX, maxX, stepAbs) {
+  if (!Array.isArray(rawPoints) || rawPoints.length === 0) return [];
 
-    const filtered = rawPoints
-      .filter(
-        (p) =>
-          Array.isArray(p) &&
-          Number.isFinite(p[0]) &&
-          Number.isFinite(p[1])
-      )
-      .slice()
-      .sort((a, b) => a[0] - b[0]);
+  // Sort strictly by X coordinate values
+  const filtered = rawPoints
+    .filter((p) => Array.isArray(p) && p.length >= 2)
+    .map((p) => [Number(p[0]), Number(p[1])])
+    .sort((a, b) => a[0] - b[0]);
 
-    if (filtered.length === 0) return [];
+  if (filtered.length === 0) return [];
 
-    const resampled = [];
-    const n = filtered.length;
+  const resampled = [];
+  const n = filtered.length;
+  let j = 0;
+  const count = Math.floor((maxX - minX) / stepAbs);
 
-    let j = 0;
-    const count = Math.floor((maxX - minX) / stepAbs);
+  for (let i = 0; i <= count; i++) {
+    const x = minX + i * stepAbs;
 
-    for (let i = 0; i <= count; i++) {
-      const x = minX + i * stepAbs;
-
-      while (
-        j + 1 < n &&
-        filtered[j + 1][0] < x &&
-        Math.abs(filtered[j + 1][0] - x) <= Math.abs(filtered[j][0] - x)
-      ) {
-        j++;
-      }
-
-      while (j + 1 < n && filtered[j + 1][0] < x) {
-        j++;
-      }
-
-      if (j + 1 >= n) {
-        const last = filtered[n - 1];
-        if (last) resampled.push([x, last[1]]);
-        continue;
-      }
-
-      const p0 = filtered[j];
-      const p1 = filtered[j + 1];
-
-      if (!p0 || !p1) continue;
-
-      const x0 = p0[0];
-      const y0 = p0[1];
-      const x1 = p1[0];
-      const y1 = p1[1];
-
-      if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) {
-        continue;
-      }
-
-      if (x1 === x0) {
-        resampled.push([x, y0]);
-        continue;
-      }
-
-      const t = (x - x0) / (x1 - x0);
-      const y = y0 + t * (y1 - y0);
-
-      if (Number.isFinite(y)) {
-        resampled.push([x, y]);
-      } else {
-        resampled.push([x, NaN]);
-      }
+    // Advance pointer to the correct data neighborhood
+    while (j + 1 < n && filtered[j + 1][0] <= x) {
+      j++;
     }
 
-    return resampled;
+    const currentMatch = filtered[j];
+    if (!currentMatch) continue;
+
+    const currentX = currentMatch[0];
+    const currentY = currentMatch[1];
+
+    if (j + 1 < n) {
+      const nextMatch = filtered[j + 1];
+      const nextX = nextMatch[0];
+      const nextY = nextMatch[1];
+
+      // 1. GAP CHECK: Did Java skip a point because of an asymptote?
+      // If the gap between raw X values is wider than 1.5 * step size, it's an asymptote.
+      if (Math.abs(nextX - currentX) >= 1.5 * stepAbs) {
+        resampled.push([x, NaN]);
+        continue;
+      }
+
+      // 2. SIGN JUMP CHECK: For functions like 1/x where points exist right next to zero
+      // If Y violently flips signs between a tiny X distance, do not connect them.
+      if (currentY * nextY < 0 && Math.abs(nextY - currentY) > 1000) {
+        resampled.push([x, NaN]);
+        continue;
+      }
+
+      // Standard linear interpolation path
+      if (Math.abs(nextX - currentX) < 1e-12) {
+        resampled.push([x, currentY]);
+      } else {
+        const t = (x - currentX) / (nextX - currentX);
+        resampled.push([x, currentY + t * (nextY - currentY)]);
+      }
+    } else {
+      resampled.push([x, currentY]);
+    }
   }
 
+  return resampled;
+}
+
   function drawFrame() {
-    if (!canvas || !ctx) return;
-    drawGridAndAxes();
-    drawFunctionFromPoints(points);
-  }
+  if (!canvas || !ctx) return;
+  drawGridAndAxes();
+  // Pass down lastRequestedStep to ensure math rendering logic functions correctly
+  drawFunctionFromPoints(points, lastRequestedStep);
+}
 
   async function graph() {
     if (!exprEl) return;
