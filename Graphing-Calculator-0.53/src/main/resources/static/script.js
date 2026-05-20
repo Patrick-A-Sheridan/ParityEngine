@@ -362,50 +362,28 @@
         continue;
       }
 
-      if (Math.abs(y) > 1e12) {
-        if (started) {
-          ctx.stroke();
-          ctx.beginPath();
-          started = false;
-        }
-        prevPx = NaN;
-        prevPy = NaN;
-        continue;
-      }
-
       const px = toPixelX(x);
       const py = toPixelY(y);
 
-      const offscreenTooFar =
-        px < -w * 2 || px > w * 3 || py < -h * 2 || py > h * 3;
+      const dy =
+  Number.isFinite(prevPy) ? Math.abs(py - prevPy) : 0;
 
-      if (offscreenTooFar) {
-        if (started) {
-          ctx.stroke();
-          ctx.beginPath();
-          started = false;
-        }
-        prevPx = NaN;
-        prevPy = NaN;
-        continue;
-      }
+const dx =
+  Number.isFinite(prevPx) ? Math.abs(px - prevPx) : 0;
 
-      const hugeJump =
-        Number.isFinite(prevPx) &&
-        Number.isFinite(prevPy) &&
-        Math.abs(px - prevPx) > 1000 &&
-        Math.abs(py - prevPy) > 1000;
+// only split if slope becomes absurdly vertical
+// AND points are still close horizontally
+const discontinuity =
+  dx < 25 &&
+  dy > canvasClientHeight() * 8;
 
-      const bigVerticalJump =
-        Number.isFinite(prevPy) && Math.abs(py - prevPy) > Math.max(400, h * 2);
-
-      if (hugeJump || bigVerticalJump) {
-        if (started) {
-          ctx.stroke();
-          ctx.beginPath();
-          started = false;
-        }
-      }
+if (discontinuity) {
+  if (started) {
+    ctx.stroke();
+    ctx.beginPath();
+    started = false;
+  }
+}
 
       if (!started) {
         ctx.moveTo(px, py);
